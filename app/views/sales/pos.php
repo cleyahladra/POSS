@@ -156,39 +156,80 @@ foreach ($products as $p) {
     function addToCart(el) {
         var id = el.dataset.id;
         var stock = parseInt(el.dataset.stock);
+        var originalStock = parseInt(el.dataset.originalStock || el.dataset.stock);
+
         if (stock <= 0) return;
 
         var existing = null;
+
         for (var i = 0; i < cart.length; i++) {
-            if (cart[i].id === id) { existing = cart[i]; break; }
+            if (cart[i].id === id) {
+                existing = cart[i];
+                break;
+            }
         }
 
         if (existing) {
-            if (existing.qty >= stock) { alert('Cannot exceed available stock!'); return; }
+
+            if (existing.qty >= existing.stock) {
+                alert('Cannot exceed available stock!');
+                return;
+            }
+
             existing.qty++;
+            existing.element = el; // 🔥 ensure element is always stored
+
         } else {
+
             cart.push({
                 id: id,
                 name: el.dataset.name,
                 price: parseFloat(el.dataset.price),
                 sku: el.dataset.sku,
+                qty: 1,
                 stock: stock,
-                qty: 1
+                originalStock: originalStock,
+                element: el // 🔥 IMPORTANT
             });
         }
+
+        stock--;
+        el.dataset.stock = stock;
+
+        updateProductStock(el, stock);
+
         renderCart();
     }
 
     function renderCart() {
+
+        var cards = document.querySelectorAll('.product-card');
+
+        // reset all highlights
+        for (var i = 0; i < cards.length; i++) {
+            cards[i].classList.remove('selected');
+        }
+
+        // re-apply highlight based on cart IDs (stable method)
+        for (var i = 0; i < cart.length; i++) {
+            var id = cart[i].id;
+
+            var card = document.querySelector('.product-card[data-id="' + id + '"]');
+            if (card) {
+                card.classList.add('selected');
+            }
+        }
+
         var container = document.getElementById('cartItems');
         var empty = document.getElementById('cartEmpty');
 
-        // Remove only existing cart-item rows, never touch #cartEmpty
+        // remove only cart items
         var rows = container.querySelectorAll('.cart-item');
         for (var i = 0; i < rows.length; i++) {
-            rows[i].parentNode.removeChild(rows[i]);
+            rows[i].remove();
         }
 
+        // empty cart state
         if (cart.length === 0) {
             empty.style.display = 'flex';
             recalculate();
@@ -197,26 +238,36 @@ foreach ($products as $p) {
 
         empty.style.display = 'none';
 
+        // rebuild cart UI
         for (var idx = 0; idx < cart.length; idx++) {
+
             var item = cart[idx];
             var sub = item.price * item.qty;
+
             var div = document.createElement('div');
             div.className = 'cart-item';
+
             div.innerHTML =
                 '<div class="ci-info">' +
                 '<span class="ci-name">' + item.name + '</span>' +
                 '<span class="ci-sku">' + item.sku + '</span>' +
                 '</div>' +
+
                 '<div class="ci-controls">' +
                 '<button class="ci-btn" onclick="changeQty(' + idx + ',-1)">&#8722;</button>' +
                 '<span class="ci-qty">' + item.qty + '</span>' +
                 '<button class="ci-btn" onclick="changeQty(' + idx + ',1)">+</button>' +
                 '</div>' +
+
                 '<div class="ci-price">' +
                 '<span>&#8369;' + item.price.toFixed(2) + '</span>' +
                 '<strong>&#8369;' + sub.toFixed(2) + '</strong>' +
                 '</div>' +
-                '<button class="ci-remove" onclick="removeItem(' + idx + ')"><i class="fas fa-times"></i></button>';
+
+                '<button class="ci-remove" onclick="removeItem(' + idx + ')">' +
+                '<i class="fas fa-times"></i>' +
+                '</button>';
+
             container.appendChild(div);
         }
 
@@ -224,23 +275,38 @@ foreach ($products as $p) {
     }
 
     function changeQty(idx, delta) {
-        cart[idx].qty += delta;
-        if (cart[idx].qty <= 0) {
-            cart.splice(idx, 1);
-        } else if (cart[idx].qty > cart[idx].stock) {
-            cart[idx].qty = cart[idx].stock;
-        }
-        renderCart();
-    }
+        var item = cart[idx];
+        var el = item.element;
 
-    function removeItem(idx) {
-        cart.splice(idx, 1);
+        var currentStock = parseInt(el.dataset.stock);
+
+        if (delta > 0) {
+            if (item.qty >= item.originalStock) return;
+
+            item.qty++;
+            currentStock--;
+        } else {
+            item.qty--;
+            currentStock++;
+        }
+
+        el.dataset.stock = currentStock;
+        updateProductStock(el, currentStock);
+
+        if (item.qty <= 0) {
+            el.classList.remove('selected');
+            cart.splice(idx, 1);
+        }
+
         renderCart();
     }
 
     function clearCart() {
         if (cart.length > 0 && !confirm('Clear all items?')) return;
         cart = [];
+        document.querySelectorAll('.product-card').forEach(function(card) {
+            card.classList.remove('selected');
+        });
         renderCart();
     }
 
@@ -443,6 +509,35 @@ foreach ($products as $p) {
             cards[i].style.display = (cat === 'all' || cards[i].dataset.cat === cat) ? '' : 'none';
         }
     });
+
+    function updateProductStock(el, stock) {
+        var stockDiv = el.querySelector('.product-stock');
+
+        if (stock <= 0) {
+            stockDiv.innerHTML = '&#x2717; Out of stock';
+            el.classList.add('out-of-stock');
+        } else {
+            stockDiv.innerHTML = 'Stock: ' + stock;
+            el.classList.remove('out-of-stock');
+        }
+    }
+
+    function removeItem(idx) {
+        var item = cart[idx];
+        var el = item.element;
+
+        var currentStock = parseInt(el.dataset.stock);
+        currentStock += item.qty;
+
+        el.dataset.stock = currentStock;
+
+        updateProductStock(el, currentStock);
+        el.classList.remove('selected');
+
+        cart.splice(idx, 1);
+
+        renderCart();
+    }
 
     renderCart();
 </script>
