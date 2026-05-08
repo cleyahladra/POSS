@@ -6,7 +6,6 @@ foreach ($products as $p) {
 }
 ?>
 <div class="pos-layout">
-    <!-- Products Panel -->
     <div class="pos-products">
         <div class="pos-search-bar">
             <div class="input-icon">
@@ -46,14 +45,12 @@ foreach ($products as $p) {
         </div>
     </div>
 
-    <!-- Cart Panel -->
     <div class="pos-cart">
         <div class="cart-header">
             <h2><i class="fas fa-shopping-cart"></i> Current Order</h2>
             <button class="btn btn-sm btn-danger" onclick="clearCart()"><i class="fas fa-trash"></i> Clear</button>
         </div>
 
-        <!-- Customer Select -->
         <div class="customer-select">
             <div class="input-icon">
                 <i class="fas fa-user"></i>
@@ -66,7 +63,6 @@ foreach ($products as $p) {
             </div>
         </div>
 
-        <!-- Cart Items -->
         <div class="cart-items" id="cartItems">
             <div class="cart-empty" id="cartEmpty">
                 <i class="fas fa-shopping-basket"></i>
@@ -75,7 +71,6 @@ foreach ($products as $p) {
             </div>
         </div>
 
-        <!-- Cart Totals -->
         <div class="cart-totals">
             <div class="total-row">
                 <span>Subtotal</span>
@@ -98,7 +93,6 @@ foreach ($products as $p) {
             </div>
         </div>
 
-        <!-- Payment -->
         <div class="payment-section">
             <div class="payment-methods">
                 <button class="pay-method active" data-method="cash" onclick="setPayment('cash', this)">
@@ -132,7 +126,6 @@ foreach ($products as $p) {
     </div>
 </div>
 
-<!-- Receipt Modal -->
 <div class="modal-overlay" id="receiptModal" style="display:none;">
     <div class="modal receipt-modal">
         <div class="modal-header">
@@ -140,7 +133,6 @@ foreach ($products as $p) {
         </div>
         <div class="receipt-content" id="receiptContent"></div>
         <div class="modal-footer">
-            <button class="btn btn-outline" onclick="printReceipt()"><i class="fas fa-print"></i> Print</button>
             <button class="btn btn-primary" onclick="newTransaction()"><i class="fas fa-plus"></i> New Sale</button>
         </div>
     </div>
@@ -170,17 +162,13 @@ foreach ($products as $p) {
         }
 
         if (existing) {
-
             if (existing.qty >= existing.stock) {
                 alert('Cannot exceed available stock!');
                 return;
             }
-
             existing.qty++;
-            existing.element = el; // 🔥 ensure element is always stored
-
+            existing.element = el;
         } else {
-
             cart.push({
                 id: id,
                 name: el.dataset.name,
@@ -189,31 +177,24 @@ foreach ($products as $p) {
                 qty: 1,
                 stock: stock,
                 originalStock: originalStock,
-                element: el // 🔥 IMPORTANT
+                element: el
             });
         }
 
         stock--;
         el.dataset.stock = stock;
-
         updateProductStock(el, stock);
-
         renderCart();
     }
 
     function renderCart() {
-
         var cards = document.querySelectorAll('.product-card');
-
-        // reset all highlights
         for (var i = 0; i < cards.length; i++) {
             cards[i].classList.remove('selected');
         }
 
-        // re-apply highlight based on cart IDs (stable method)
         for (var i = 0; i < cart.length; i++) {
             var id = cart[i].id;
-
             var card = document.querySelector('.product-card[data-id="' + id + '"]');
             if (card) {
                 card.classList.add('selected');
@@ -222,14 +203,11 @@ foreach ($products as $p) {
 
         var container = document.getElementById('cartItems');
         var empty = document.getElementById('cartEmpty');
-
-        // remove only cart items
         var rows = container.querySelectorAll('.cart-item');
         for (var i = 0; i < rows.length; i++) {
             rows[i].remove();
         }
 
-        // empty cart state
         if (cart.length === 0) {
             empty.style.display = 'flex';
             recalculate();
@@ -238,51 +216,40 @@ foreach ($products as $p) {
 
         empty.style.display = 'none';
 
-        // rebuild cart UI
         for (var idx = 0; idx < cart.length; idx++) {
-
             var item = cart[idx];
             var sub = item.price * item.qty;
-
             var div = document.createElement('div');
             div.className = 'cart-item';
-
             div.innerHTML =
                 '<div class="ci-info">' +
                 '<span class="ci-name">' + item.name + '</span>' +
                 '<span class="ci-sku">' + item.sku + '</span>' +
                 '</div>' +
-
                 '<div class="ci-controls">' +
                 '<button class="ci-btn" onclick="changeQty(' + idx + ',-1)">&#8722;</button>' +
                 '<span class="ci-qty">' + item.qty + '</span>' +
                 '<button class="ci-btn" onclick="changeQty(' + idx + ',1)">+</button>' +
                 '</div>' +
-
                 '<div class="ci-price">' +
                 '<span>&#8369;' + item.price.toFixed(2) + '</span>' +
                 '<strong>&#8369;' + sub.toFixed(2) + '</strong>' +
                 '</div>' +
-
                 '<button class="ci-remove" onclick="removeItem(' + idx + ')">' +
                 '<i class="fas fa-times"></i>' +
                 '</button>';
-
             container.appendChild(div);
         }
-
         recalculate();
     }
 
     function changeQty(idx, delta) {
         var item = cart[idx];
         var el = item.element;
-
         var currentStock = parseInt(el.dataset.stock);
 
         if (delta > 0) {
             if (item.qty >= item.originalStock) return;
-
             item.qty++;
             currentStock--;
         } else {
@@ -297,7 +264,6 @@ foreach ($products as $p) {
             el.classList.remove('selected');
             cart.splice(idx, 1);
         }
-
         renderCart();
     }
 
@@ -461,21 +427,6 @@ foreach ($products as $p) {
         document.getElementById('receiptModal').style.display = 'flex';
     }
 
-    function printReceipt() {
-        var content = document.getElementById('receiptContent').innerHTML;
-        var win = window.open('', '_blank', 'width=380,height=600');
-        win.document.write('<!DOCTYPE html><html><head><title>Receipt</title>' +
-            '<style>body{font-family:monospace;font-size:13px;max-width:380px;margin:0 auto;padding:16px}' +
-            '.receipt-header{text-align:center;margin-bottom:12px;border-bottom:1px dashed #ccc;padding-bottom:8px}' +
-            '.r-item,.r-row{display:flex;justify-content:space-between;padding:2px 0}' +
-            '.receipt-items{border-bottom:1px dashed #ccc;padding-bottom:8px;margin-bottom:8px}' +
-            '.r-total{font-weight:bold;border-top:1px dashed #ccc;padding-top:4px;margin-top:4px}' +
-            '.receipt-footer{text-align:center;margin-top:12px;border-top:1px dashed #ccc;padding-top:8px}' +
-            '</style></head><body>' + content + '</body></html>');
-        win.document.close();
-        win.print();
-    }
-
     function newTransaction() {
         cart = [];
         document.getElementById('discountAmount').value = 0;
@@ -486,7 +437,6 @@ foreach ($products as $p) {
         document.getElementById('receiptModal').style.display = 'none';
     }
 
-    // Product search
     document.getElementById('productSearch').addEventListener('input', function() {
         var q = this.value.toLowerCase();
         var cards = document.querySelectorAll('.product-card');
@@ -497,7 +447,6 @@ foreach ($products as $p) {
         }
     });
 
-    // Category filter
     document.getElementById('categoryTabs').addEventListener('click', function(e) {
         if (!e.target.classList.contains('cat-tab')) return;
         var tabs = document.querySelectorAll('.cat-tab');
@@ -512,7 +461,6 @@ foreach ($products as $p) {
 
     function updateProductStock(el, stock) {
         var stockDiv = el.querySelector('.product-stock');
-
         if (stock <= 0) {
             stockDiv.innerHTML = '&#x2717; Out of stock';
             el.classList.add('out-of-stock');
@@ -525,17 +473,12 @@ foreach ($products as $p) {
     function removeItem(idx) {
         var item = cart[idx];
         var el = item.element;
-
         var currentStock = parseInt(el.dataset.stock);
         currentStock += item.qty;
-
         el.dataset.stock = currentStock;
-
         updateProductStock(el, currentStock);
         el.classList.remove('selected');
-
         cart.splice(idx, 1);
-
         renderCart();
     }
 

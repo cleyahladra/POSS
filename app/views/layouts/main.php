@@ -9,6 +9,8 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <link rel="stylesheet" href="<?= BASE_URL ?>/css/app.css">
+    <!-- ADD THIS LINE BELOW -->
+    <link rel="stylesheet" href="<?= BASE_URL ?>/css/music-player.css">
 </head>
 <body>
     <aside class="sidebar" id="sidebar">
@@ -102,6 +104,10 @@
 
             <?= $content ?>
         </main>
+
+        <script src="<?= BASE_URL ?>/js/app.js"></script>
+        <!-- ADD THIS LINE BELOW -->
+        <script src="<?= BASE_URL ?>/js/music-player.js"></script>
     </div>
 
     <script src="<?= BASE_URL ?>/js/app.js"></script>
