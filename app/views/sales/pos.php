@@ -18,30 +18,30 @@ foreach ($products as $p) {
         <div class="category-tabs" id="categoryTabs">
             <button class="cat-tab active" data-cat="all">All</button>
             <?php foreach (array_keys($categorized) as $cat): ?>
-            <button class="cat-tab" data-cat="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></button>
+                <button class="cat-tab" data-cat="<?= htmlspecialchars($cat) ?>"><?= htmlspecialchars($cat) ?></button>
             <?php endforeach; ?>
         </div>
 
         <div class="product-grid" id="productGrid">
             <?php foreach ($products as $product): ?>
-            <div class="product-card <?= $product['stock'] <= 0 ? 'out-of-stock' : '' ?>"
-                 data-id="<?= $product['id'] ?>"
-                 data-name="<?= htmlspecialchars($product['name']) ?>"
-                 data-price="<?= $product['price'] ?>"
-                 data-sku="<?= htmlspecialchars($product['sku']) ?>"
-                 data-stock="<?= $product['stock'] ?>"
-                 data-cat="<?= htmlspecialchars($product['category_name'] ?? '') ?>"
-                 onclick="addToCart(this)">
-                <div class="product-card-body">
-                    <div class="product-icon"><i class="fas fa-box-open"></i></div>
-                    <div class="product-name"><?= htmlspecialchars($product['name']) ?></div>
-                    <div class="product-sku"><?= htmlspecialchars($product['sku']) ?></div>
-                    <div class="product-price">₱<?= number_format($product['price'], 2) ?></div>
-                    <div class="product-stock <?= $product['stock'] <= $product['low_stock_alert'] ? 'low' : '' ?>">
-                        <?= $product['stock'] <= 0 ? '✗ Out of stock' : 'Stock: ' . $product['stock'] ?>
+                <div class="product-card <?= $product['stock'] <= 0 ? 'out-of-stock' : '' ?>"
+                     data-id="<?= $product['id'] ?>"
+                     data-name="<?= htmlspecialchars($product['name']) ?>"
+                     data-price="<?= $product['price'] ?>"
+                     data-sku="<?= htmlspecialchars($product['sku']) ?>"
+                     data-stock="<?= $product['stock'] ?>"
+                     data-cat="<?= htmlspecialchars($product['category_name'] ?? '') ?>"
+                     onclick="addToCart(this)">
+                    <div class="product-card-body">
+                        <div class="product-icon"><i class="fas fa-box-open"></i></div>
+                        <div class="product-name"><?= htmlspecialchars($product['name']) ?></div>
+                        <div class="product-sku"><?= htmlspecialchars($product['sku']) ?></div>
+                        <div class="product-price">₱<?= number_format($product['price'], 2) ?></div>
+                        <div class="product-stock <?= $product['stock'] <= $product['low_stock_alert'] ? 'low' : '' ?>">
+                            <?= $product['stock'] <= 0 ? '✗ Out of stock' : 'Stock: ' . $product['stock'] ?>
+                        </div>
                     </div>
                 </div>
-            </div>
             <?php endforeach; ?>
         </div>
     </div>
@@ -60,7 +60,7 @@ foreach ($products as $p) {
                 <select id="customerSelect" name="customer_id">
                     <option value="">Walk-in Customer</option>
                     <?php foreach ($customers as $c): ?>
-                    <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?><?= $c['phone'] ? ' — ' . $c['phone'] : '' ?></option>
+                        <option value="<?= $c['id'] ?>"><?= htmlspecialchars($c['name']) ?><?= $c['phone'] ? ' — ' . $c['phone'] : '' ?></option>
                     <?php endforeach; ?>
                 </select>
             </div>
@@ -68,11 +68,12 @@ foreach ($products as $p) {
 
         <!-- Cart Items -->
         <div class="cart-items" id="cartItems">
-            <div class="cart-empty" id="cartEmpty">
+            <div class="cart-empty" id="cartEmpty" style="display:flex;">
                 <i class="fas fa-shopping-basket"></i>
                 <p>Cart is empty</p>
                 <small>Click products to add them</small>
             </div>
+            <div id="cartList"></div>
         </div>
 
         <!-- Cart Totals -->
@@ -148,52 +149,51 @@ foreach ($products as $p) {
 </div>
 
 <script>
-const BASE_URL = '<?= BASE_URL ?>';
-const TAX_RATE = <?= TAX_RATE ?>;
-let cart = [];
-let paymentMethod = 'cash';
-let currentSale = null;
+    const BASE_URL = '<?= BASE_URL ?>';
+    const TAX_RATE = <?= TAX_RATE ?>;
+    let cart = [];
+    let paymentMethod = 'cash';
+    let currentSale = null;
 
-function addToCart(el) {
-    const id = el.dataset.id;
-    const stock = parseInt(el.dataset.stock);
-    if (stock <= 0) return;
+    function addToCart(el) {
+        const id = el.dataset.id;
+        const stock = parseInt(el.dataset.stock);
+        if (stock <= 0) return;
 
-    const existing = cart.find(i => i.id === id);
-    if (existing) {
-        if (existing.qty >= stock) { alert('Cannot exceed stock quantity!'); return; }
-        existing.qty++;
-    } else {
-        cart.push({
-            id: id,
-            name: el.dataset.name,
-            price: parseFloat(el.dataset.price),
-            sku: el.dataset.sku,
-            stock: stock,
-            qty: 1,
-            discount: 0
-        });
-    }
-    renderCart();
-}
-
-function renderCart() {
-    const container = document.getElementById('cartItems');
-    const empty = document.getElementById('cartEmpty');
-
-    if (cart.length === 0) {
-        empty.style.display = 'flex';
-        container.innerHTML = '';
-        container.appendChild(empty);
-        recalculate();
-        return;
+        const existing = cart.find(i => i.id === id);
+        if (existing) {
+            if (existing.qty >= stock) { alert('Cannot exceed stock quantity!'); return; }
+            existing.qty++;
+        } else {
+            cart.push({
+                id: id,
+                name: el.dataset.name,
+                price: parseFloat(el.dataset.price),
+                sku: el.dataset.sku,
+                stock: stock,
+                qty: 1,
+                discount: 0
+            });
+        }
+        renderCart();
     }
 
-    empty.style.display = 'none';
-    let html = '';
-    cart.forEach((item, idx) => {
-        const sub = item.price * item.qty;
-        html += `
+    function renderCart() {
+        const list = document.getElementById('cartList');
+        const empty = document.getElementById('cartEmpty');
+
+        if (cart.length === 0) {
+            list.innerHTML = '';
+            empty.style.display = 'flex';
+            recalculate();
+            return;
+        }
+
+        empty.style.display = 'none';
+        let html = '';
+        cart.forEach((item, idx) => {
+            const sub = item.price * item.qty;
+            html += `
         <div class="cart-item">
             <div class="ci-info">
                 <span class="ci-name">${item.name}</span>
@@ -210,135 +210,135 @@ function renderCart() {
             </div>
             <button class="ci-remove" onclick="removeItem(${idx})"><i class="fas fa-times"></i></button>
         </div>`;
-    });
-
-    container.innerHTML = html;
-    recalculate();
-}
-
-function changeQty(idx, delta) {
-    cart[idx].qty += delta;
-    if (cart[idx].qty <= 0) cart.splice(idx, 1);
-    else if (cart[idx].qty > cart[idx].stock) cart[idx].qty = cart[idx].stock;
-    renderCart();
-}
-
-function removeItem(idx) {
-    cart.splice(idx, 1);
-    renderCart();
-}
-
-function clearCart() {
-    if (cart.length && !confirm('Clear all items?')) return;
-    cart = [];
-    renderCart();
-}
-
-function recalculate() {
-    const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const discount = parseFloat(document.getElementById('discountAmount').value) || 0;
-    const taxable = subtotal - discount;
-    const tax = taxable * (TAX_RATE / 100);
-    const total = taxable + tax;
-
-    document.getElementById('subtotal').textContent = '₱' + subtotal.toFixed(2);
-    document.getElementById('taxAmount').textContent = '₱' + tax.toFixed(2);
-    document.getElementById('totalAmount').textContent = '₱' + total.toFixed(2);
-    calcChange();
-}
-
-function calcChange() {
-    const total = parseFloat(document.getElementById('totalAmount').textContent.replace('₱', '')) || 0;
-    const paid = parseFloat(document.getElementById('amountPaid').value) || 0;
-    const change = paid - total;
-    document.getElementById('changeAmount').textContent = '₱' + Math.max(0, change).toFixed(2);
-    document.getElementById('changeAmount').style.color = change < 0 ? '#e74c3c' : '#2ecc71';
-}
-
-function setExactCash() {
-    const total = document.getElementById('totalAmount').textContent.replace('₱', '');
-    document.getElementById('amountPaid').value = total;
-    calcChange();
-}
-
-function setQuickCash(amount) {
-    document.getElementById('amountPaid').value = amount;
-    calcChange();
-}
-
-function setPayment(method, btn) {
-    paymentMethod = method;
-    document.querySelectorAll('.pay-method').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    document.getElementById('cashInputGroup').style.display = method === 'cash' ? 'block' : 'none';
-}
-
-async function processCheckout() {
-    if (cart.length === 0) { alert('Cart is empty!'); return; }
-
-    const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-    const discount = parseFloat(document.getElementById('discountAmount').value) || 0;
-    const tax = (subtotal - discount) * (TAX_RATE / 100);
-    const total = (subtotal - discount) + tax;
-    const paid = paymentMethod === 'cash' ? (parseFloat(document.getElementById('amountPaid').value) || 0) : total;
-
-    if (paymentMethod === 'cash' && paid < total) { alert('Insufficient payment!'); return; }
-
-    const items = cart.map(i => ({
-        product_id: i.id,
-        product_name: i.name,
-        quantity: i.qty,
-        unit_price: i.price,
-        discount: 0,
-        subtotal: i.price * i.qty
-    }));
-
-    const payload = {
-        customer_id: document.getElementById('customerSelect').value || null,
-        items,
-        subtotal,
-        tax_rate: TAX_RATE,
-        tax_amount: tax,
-        discount_amount: discount,
-        total_amount: total,
-        amount_paid: paid,
-        change_amount: Math.max(0, paid - total),
-        payment_method: paymentMethod,
-    };
-
-    document.getElementById('checkoutBtn').disabled = true;
-    document.getElementById('checkoutBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
-
-    try {
-        const res = await fetch(BASE_URL + '/index.php?url=sales/process', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-            body: JSON.stringify(payload)
         });
-        const data = await res.json();
 
-        if (data.success) {
-            currentSale = data.sale;
-            showReceipt(data.sale, paid, Math.max(0, paid - total));
-        } else {
-            alert('Error: ' + (data.message || 'Failed to process sale'));
-        }
-    } catch (e) {
-        alert('Network error. Please try again.');
-    } finally {
-        document.getElementById('checkoutBtn').disabled = false;
-        document.getElementById('checkoutBtn').innerHTML = '<i class="fas fa-check-circle"></i> Process Payment';
+        list.innerHTML = html;
+        recalculate();
     }
-}
 
-function showReceipt(sale, paid, change) {
-    let itemsHtml = sale.items.map(i => `
+    function changeQty(idx, delta) {
+        cart[idx].qty += delta;
+        if (cart[idx].qty <= 0) cart.splice(idx, 1);
+        else if (cart[idx].qty > cart[idx].stock) cart[idx].qty = cart[idx].stock;
+        renderCart();
+    }
+
+    function removeItem(idx) {
+        cart.splice(idx, 1);
+        renderCart();
+    }
+
+    function clearCart() {
+        if (cart.length && !confirm('Clear all items?')) return;
+        cart = [];
+        renderCart();
+    }
+
+    function recalculate() {
+        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const discount = parseFloat(document.getElementById('discountAmount').value) || 0;
+        const taxable = subtotal - discount;
+        const tax = taxable * (TAX_RATE / 100);
+        const total = taxable + tax;
+
+        document.getElementById('subtotal').textContent = '₱' + subtotal.toFixed(2);
+        document.getElementById('taxAmount').textContent = '₱' + tax.toFixed(2);
+        document.getElementById('totalAmount').textContent = '₱' + total.toFixed(2);
+        calcChange();
+    }
+
+    function calcChange() {
+        const total = parseFloat(document.getElementById('totalAmount').textContent.replace('₱', '')) || 0;
+        const paid = parseFloat(document.getElementById('amountPaid').value) || 0;
+        const change = paid - total;
+        document.getElementById('changeAmount').textContent = '₱' + Math.max(0, change).toFixed(2);
+        document.getElementById('changeAmount').style.color = change < 0 ? '#e74c3c' : '#2ecc71';
+    }
+
+    function setExactCash() {
+        const total = document.getElementById('totalAmount').textContent.replace('₱', '');
+        document.getElementById('amountPaid').value = total;
+        calcChange();
+    }
+
+    function setQuickCash(amount) {
+        document.getElementById('amountPaid').value = amount;
+        calcChange();
+    }
+
+    function setPayment(method, btn) {
+        paymentMethod = method;
+        document.querySelectorAll('.pay-method').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('cashInputGroup').style.display = method === 'cash' ? 'block' : 'none';
+    }
+
+    async function processCheckout() {
+        if (cart.length === 0) { alert('Cart is empty!'); return; }
+
+        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+        const discount = parseFloat(document.getElementById('discountAmount').value) || 0;
+        const tax = (subtotal - discount) * (TAX_RATE / 100);
+        const total = (subtotal - discount) + tax;
+        const paid = paymentMethod === 'cash' ? (parseFloat(document.getElementById('amountPaid').value) || 0) : total;
+
+        if (paymentMethod === 'cash' && paid < total) { alert('Insufficient payment!'); return; }
+
+        const items = cart.map(i => ({
+            product_id: i.id,
+            product_name: i.name,
+            quantity: i.qty,
+            unit_price: i.price,
+            discount: 0,
+            subtotal: i.price * i.qty
+        }));
+
+        const payload = {
+            customer_id: document.getElementById('customerSelect').value || null,
+            items,
+            subtotal,
+            tax_rate: TAX_RATE,
+            tax_amount: tax,
+            discount_amount: discount,
+            total_amount: total,
+            amount_paid: paid,
+            change_amount: Math.max(0, paid - total),
+            payment_method: paymentMethod,
+        };
+
+        document.getElementById('checkoutBtn').disabled = true;
+        document.getElementById('checkoutBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+
+        try {
+            const res = await fetch(BASE_URL + '/index.php?url=sales/process', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                body: JSON.stringify(payload)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                currentSale = data.sale;
+                showReceipt(data.sale, paid, Math.max(0, paid - total));
+            } else {
+                alert('Error: ' + (data.message || 'Failed to process sale'));
+            }
+        } catch (e) {
+            alert('Network error. Please try again.');
+        } finally {
+            document.getElementById('checkoutBtn').disabled = false;
+            document.getElementById('checkoutBtn').innerHTML = '<i class="fas fa-check-circle"></i> Process Payment';
+        }
+    }
+
+    function showReceipt(sale, paid, change) {
+        let itemsHtml = sale.items.map(i => `
         <div class="r-item">
             <span>${i.product_name} x${i.quantity}</span>
             <span>₱${parseFloat(i.subtotal).toFixed(2)}</span>
         </div>`).join('');
 
-    document.getElementById('receiptContent').innerHTML = `
+        document.getElementById('receiptContent').innerHTML = `
         <div class="receipt-header">
             <strong>${'<?= APP_NAME ?>'}</strong>
             <div>${sale.invoice_number}</div>
@@ -355,13 +355,13 @@ function showReceipt(sale, paid, change) {
         </div>
         <div class="receipt-footer">Thank you for your purchase!</div>`;
 
-    document.getElementById('receiptModal').style.display = 'flex';
-}
+        document.getElementById('receiptModal').style.display = 'flex';
+    }
 
-function printReceipt() {
-    const content = document.getElementById('receiptContent').innerHTML;
-    const win = window.open('', '_blank', 'width=380,height=600');
-    win.document.write(`<!DOCTYPE html><html><head><title>Receipt</title>
+    function printReceipt() {
+        const content = document.getElementById('receiptContent').innerHTML;
+        const win = window.open('', '_blank', 'width=380,height=600');
+        win.document.write(`<!DOCTYPE html><html><head><title>Receipt</title>
     <style>body{font-family:monospace;font-size:13px;max-width:380px;margin:0 auto;padding:16px}
     .receipt-header{text-align:center;margin-bottom:12px;border-bottom:1px dashed #ccc;padding-bottom:8px}
     .r-item,.r-row{display:flex;justify-content:space-between;padding:2px 0}
@@ -369,37 +369,42 @@ function printReceipt() {
     .r-total{font-weight:bold;border-top:1px dashed #ccc;padding-top:4px;margin-top:4px}
     .receipt-footer{text-align:center;margin-top:12px;border-top:1px dashed #ccc;padding-top:8px}
     </style></head><body>${content}</body></html>`);
-    win.document.close();
-    win.print();
-}
+        win.document.close();
+        win.print();
+    }
 
-function newTransaction() {
-    cart = [];
-    document.getElementById('discountAmount').value = 0;
-    document.getElementById('amountPaid').value = '';
-    document.getElementById('customerSelect').value = '';
+    function newTransaction() {
+        cart = [];
+        currentSale = null;
+        document.getElementById('discountAmount').value = 0;
+        document.getElementById('amountPaid').value = '';
+        document.getElementById('customerSelect').value = '';
+        document.getElementById('receiptModal').style.display = 'none';
+        paymentMethod = 'cash';
+        document.querySelectorAll('.pay-method').forEach(b => b.classList.remove('active'));
+        document.querySelector('.pay-method[data-method="cash"]').classList.add('active');
+        document.getElementById('cashInputGroup').style.display = 'block';
+        renderCart();
+    }
+
+    // Product search & filter
+    document.getElementById('productSearch').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        document.querySelectorAll('.product-card').forEach(card => {
+            const match = card.dataset.name.toLowerCase().includes(q) || card.dataset.sku.toLowerCase().includes(q);
+            card.style.display = match ? '' : 'none';
+        });
+    });
+
+    document.getElementById('categoryTabs').addEventListener('click', function(e) {
+        if (!e.target.classList.contains('cat-tab')) return;
+        document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+        e.target.classList.add('active');
+        const cat = e.target.dataset.cat;
+        document.querySelectorAll('.product-card').forEach(card => {
+            card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
+        });
+    });
+
     renderCart();
-    document.getElementById('receiptModal').style.display = 'none';
-}
-
-// Product search & filter
-document.getElementById('productSearch').addEventListener('input', function() {
-    const q = this.value.toLowerCase();
-    document.querySelectorAll('.product-card').forEach(card => {
-        const match = card.dataset.name.toLowerCase().includes(q) || card.dataset.sku.toLowerCase().includes(q);
-        card.style.display = match ? '' : 'none';
-    });
-});
-
-document.getElementById('categoryTabs').addEventListener('click', function(e) {
-    if (!e.target.classList.contains('cat-tab')) return;
-    document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
-    e.target.classList.add('active');
-    const cat = e.target.dataset.cat;
-    document.querySelectorAll('.product-card').forEach(card => {
-        card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
-    });
-});
-
-renderCart();
 </script>
