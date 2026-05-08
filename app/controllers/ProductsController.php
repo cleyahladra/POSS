@@ -101,7 +101,6 @@ class ProductsController extends Controller {
 
     // Categories
     public function categories(): void {
-        $this->requireAdmin();
         $categories = $this->categoryModel->findAll('', 'name ASC');
         $this->view('products/categories', [
             'pageTitle' => 'Categories',
