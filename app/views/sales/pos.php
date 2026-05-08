@@ -36,9 +36,9 @@ foreach ($products as $p) {
                         <div class="product-icon"><i class="fas fa-box-open"></i></div>
                         <div class="product-name"><?= htmlspecialchars($product['name']) ?></div>
                         <div class="product-sku"><?= htmlspecialchars($product['sku']) ?></div>
-                        <div class="product-price">₱<?= number_format($product['price'], 2) ?></div>
+                        <div class="product-price">&#8369;<?= number_format($product['price'], 2) ?></div>
                         <div class="product-stock <?= $product['stock'] <= $product['low_stock_alert'] ? 'low' : '' ?>">
-                            <?= $product['stock'] <= 0 ? '✗ Out of stock' : 'Stock: ' . $product['stock'] ?>
+                            <?= $product['stock'] <= 0 ? '&#x2717; Out of stock' : 'Stock: ' . $product['stock'] ?>
                         </div>
                     </div>
                 </div>
@@ -68,34 +68,33 @@ foreach ($products as $p) {
 
         <!-- Cart Items -->
         <div class="cart-items" id="cartItems">
-            <div class="cart-empty" id="cartEmpty" style="display:flex;">
+            <div class="cart-empty" id="cartEmpty">
                 <i class="fas fa-shopping-basket"></i>
                 <p>Cart is empty</p>
                 <small>Click products to add them</small>
             </div>
-            <div id="cartList"></div>
         </div>
 
         <!-- Cart Totals -->
         <div class="cart-totals">
             <div class="total-row">
                 <span>Subtotal</span>
-                <span id="subtotal">₱0.00</span>
+                <span id="subtotal">&#8369;0.00</span>
             </div>
             <div class="total-row">
                 <span>Discount</span>
                 <div class="discount-input">
-                    <span>₱</span>
-                    <input type="number" id="discountAmount" value="0" min="0" step="0.01" onchange="recalculate()">
+                    <span>&#8369;</span>
+                    <input type="number" id="discountAmount" value="0" min="0" step="0.01" oninput="recalculate()">
                 </div>
             </div>
             <div class="total-row">
                 <span>Tax (<?= TAX_RATE ?>%)</span>
-                <span id="taxAmount">₱0.00</span>
+                <span id="taxAmount">&#8369;0.00</span>
             </div>
             <div class="total-row total-final">
                 <span>TOTAL</span>
-                <span id="totalAmount">₱0.00</span>
+                <span id="totalAmount">&#8369;0.00</span>
             </div>
         </div>
 
@@ -116,14 +115,13 @@ foreach ($products as $p) {
             <div id="cashInputGroup" class="cash-input-group">
                 <label>Amount Tendered</label>
                 <input type="number" id="amountPaid" placeholder="0.00" min="0" step="0.01" oninput="calcChange()">
-                <div class="change-display">
-                    <span>Change:</span>
-                    <span id="changeAmount" class="change-value">₱0.00</span>
-                </div>
+                <label style="margin-top:10px;">Change</label>
+                <input type="number" id="changeAmount" placeholder="0.00" step="0.01" readonly
+                       style="font-weight:700;font-size:16px;color:#2ecc71;background:rgba(46,204,113,0.08);border-color:rgba(46,204,113,0.25);">
                 <div class="quick-cash">
                     <button onclick="setExactCash()">Exact</button>
-                    <button onclick="setQuickCash(500)">₱500</button>
-                    <button onclick="setQuickCash(1000)">₱1000</button>
+                    <button onclick="setQuickCash(500)">&#8369;500</button>
+                    <button onclick="setQuickCash(1000)">&#8369;1000</button>
                 </div>
             </div>
 
@@ -149,20 +147,24 @@ foreach ($products as $p) {
 </div>
 
 <script>
-    const BASE_URL = '<?= BASE_URL ?>';
-    const TAX_RATE = <?= TAX_RATE ?>;
-    let cart = [];
-    let paymentMethod = 'cash';
-    let currentSale = null;
+    var BASE_URL = '<?= BASE_URL ?>';
+    var TAX_RATE = <?= TAX_RATE ?>;
+    var cart = [];
+    var paymentMethod = 'cash';
+    var currentSale = null;
 
     function addToCart(el) {
-        const id = el.dataset.id;
-        const stock = parseInt(el.dataset.stock);
+        var id = el.dataset.id;
+        var stock = parseInt(el.dataset.stock);
         if (stock <= 0) return;
 
-        const existing = cart.find(i => i.id === id);
+        var existing = null;
+        for (var i = 0; i < cart.length; i++) {
+            if (cart[i].id === id) { existing = cart[i]; break; }
+        }
+
         if (existing) {
-            if (existing.qty >= stock) { alert('Cannot exceed stock quantity!'); return; }
+            if (existing.qty >= stock) { alert('Cannot exceed available stock!'); return; }
             existing.qty++;
         } else {
             cart.push({
@@ -171,55 +173,63 @@ foreach ($products as $p) {
                 price: parseFloat(el.dataset.price),
                 sku: el.dataset.sku,
                 stock: stock,
-                qty: 1,
-                discount: 0
+                qty: 1
             });
         }
         renderCart();
     }
 
     function renderCart() {
-        const list = document.getElementById('cartList');
-        const empty = document.getElementById('cartEmpty');
+        var container = document.getElementById('cartItems');
+        var empty = document.getElementById('cartEmpty');
+
+        // Remove only existing cart-item rows, never touch #cartEmpty
+        var rows = container.querySelectorAll('.cart-item');
+        for (var i = 0; i < rows.length; i++) {
+            rows[i].parentNode.removeChild(rows[i]);
+        }
 
         if (cart.length === 0) {
-            list.innerHTML = '';
             empty.style.display = 'flex';
             recalculate();
             return;
         }
 
         empty.style.display = 'none';
-        let html = '';
-        cart.forEach((item, idx) => {
-            const sub = item.price * item.qty;
-            html += `
-        <div class="cart-item">
-            <div class="ci-info">
-                <span class="ci-name">${item.name}</span>
-                <span class="ci-sku">${item.sku}</span>
-            </div>
-            <div class="ci-controls">
-                <button class="ci-btn" onclick="changeQty(${idx}, -1)">−</button>
-                <span class="ci-qty">${item.qty}</span>
-                <button class="ci-btn" onclick="changeQty(${idx}, 1)">+</button>
-            </div>
-            <div class="ci-price">
-                <span>₱${item.price.toFixed(2)}</span>
-                <strong>₱${sub.toFixed(2)}</strong>
-            </div>
-            <button class="ci-remove" onclick="removeItem(${idx})"><i class="fas fa-times"></i></button>
-        </div>`;
-        });
 
-        list.innerHTML = html;
+        for (var idx = 0; idx < cart.length; idx++) {
+            var item = cart[idx];
+            var sub = item.price * item.qty;
+            var div = document.createElement('div');
+            div.className = 'cart-item';
+            div.innerHTML =
+                '<div class="ci-info">' +
+                '<span class="ci-name">' + item.name + '</span>' +
+                '<span class="ci-sku">' + item.sku + '</span>' +
+                '</div>' +
+                '<div class="ci-controls">' +
+                '<button class="ci-btn" onclick="changeQty(' + idx + ',-1)">&#8722;</button>' +
+                '<span class="ci-qty">' + item.qty + '</span>' +
+                '<button class="ci-btn" onclick="changeQty(' + idx + ',1)">+</button>' +
+                '</div>' +
+                '<div class="ci-price">' +
+                '<span>&#8369;' + item.price.toFixed(2) + '</span>' +
+                '<strong>&#8369;' + sub.toFixed(2) + '</strong>' +
+                '</div>' +
+                '<button class="ci-remove" onclick="removeItem(' + idx + ')"><i class="fas fa-times"></i></button>';
+            container.appendChild(div);
+        }
+
         recalculate();
     }
 
     function changeQty(idx, delta) {
         cart[idx].qty += delta;
-        if (cart[idx].qty <= 0) cart.splice(idx, 1);
-        else if (cart[idx].qty > cart[idx].stock) cart[idx].qty = cart[idx].stock;
+        if (cart[idx].qty <= 0) {
+            cart.splice(idx, 1);
+        } else if (cart[idx].qty > cart[idx].stock) {
+            cart[idx].qty = cart[idx].stock;
+        }
         renderCart();
     }
 
@@ -229,35 +239,49 @@ foreach ($products as $p) {
     }
 
     function clearCart() {
-        if (cart.length && !confirm('Clear all items?')) return;
+        if (cart.length > 0 && !confirm('Clear all items?')) return;
         cart = [];
         renderCart();
     }
 
     function recalculate() {
-        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-        const discount = parseFloat(document.getElementById('discountAmount').value) || 0;
-        const taxable = subtotal - discount;
-        const tax = taxable * (TAX_RATE / 100);
-        const total = taxable + tax;
+        var subtotal = 0;
+        for (var i = 0; i < cart.length; i++) {
+            subtotal += cart[i].price * cart[i].qty;
+        }
+        var discount = parseFloat(document.getElementById('discountAmount').value) || 0;
+        var taxable = subtotal - discount;
+        if (taxable < 0) taxable = 0;
+        var tax = taxable * (TAX_RATE / 100);
+        var total = taxable + tax;
 
-        document.getElementById('subtotal').textContent = '₱' + subtotal.toFixed(2);
-        document.getElementById('taxAmount').textContent = '₱' + tax.toFixed(2);
-        document.getElementById('totalAmount').textContent = '₱' + total.toFixed(2);
+        document.getElementById('subtotal').textContent = '\u20B1' + subtotal.toFixed(2);
+        document.getElementById('taxAmount').textContent = '\u20B1' + tax.toFixed(2);
+        document.getElementById('totalAmount').textContent = '\u20B1' + total.toFixed(2);
         calcChange();
     }
 
     function calcChange() {
-        const total = parseFloat(document.getElementById('totalAmount').textContent.replace('₱', '')) || 0;
-        const paid = parseFloat(document.getElementById('amountPaid').value) || 0;
-        const change = paid - total;
-        document.getElementById('changeAmount').textContent = '₱' + Math.max(0, change).toFixed(2);
-        document.getElementById('changeAmount').style.color = change < 0 ? '#e74c3c' : '#2ecc71';
+        var totalText = document.getElementById('totalAmount').textContent.replace('\u20B1', '');
+        var total = parseFloat(totalText) || 0;
+        var paid = parseFloat(document.getElementById('amountPaid').value) || 0;
+        var change = paid - total;
+        var changeEl = document.getElementById('changeAmount');
+        if (change < 0) {
+            changeEl.value = '';
+            changeEl.style.color = '#e74c3c';
+            changeEl.style.borderColor = 'rgba(231,76,60,0.4)';
+            changeEl.placeholder = 'Insufficient';
+        } else {
+            changeEl.value = change.toFixed(2);
+            changeEl.style.color = '#2ecc71';
+            changeEl.style.borderColor = 'rgba(46,204,113,0.25)';
+        }
     }
 
     function setExactCash() {
-        const total = document.getElementById('totalAmount').textContent.replace('₱', '');
-        document.getElementById('amountPaid').value = total;
+        var totalText = document.getElementById('totalAmount').textContent.replace('\u20B1', '');
+        document.getElementById('amountPaid').value = parseFloat(totalText).toFixed(2);
         calcChange();
     }
 
@@ -268,142 +292,156 @@ foreach ($products as $p) {
 
     function setPayment(method, btn) {
         paymentMethod = method;
-        document.querySelectorAll('.pay-method').forEach(b => b.classList.remove('active'));
+        var btns = document.querySelectorAll('.pay-method');
+        for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
         btn.classList.add('active');
-        document.getElementById('cashInputGroup').style.display = method === 'cash' ? 'block' : 'none';
+        document.getElementById('cashInputGroup').style.display = (method === 'cash') ? 'block' : 'none';
     }
 
-    async function processCheckout() {
+    function processCheckout() {
         if (cart.length === 0) { alert('Cart is empty!'); return; }
 
-        const subtotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
-        const discount = parseFloat(document.getElementById('discountAmount').value) || 0;
-        const tax = (subtotal - discount) * (TAX_RATE / 100);
-        const total = (subtotal - discount) + tax;
-        const paid = paymentMethod === 'cash' ? (parseFloat(document.getElementById('amountPaid').value) || 0) : total;
+        var subtotal = 0;
+        for (var i = 0; i < cart.length; i++) subtotal += cart[i].price * cart[i].qty;
 
-        if (paymentMethod === 'cash' && paid < total) { alert('Insufficient payment!'); return; }
+        var discount = parseFloat(document.getElementById('discountAmount').value) || 0;
+        var taxable = subtotal - discount;
+        if (taxable < 0) taxable = 0;
+        var tax = taxable * (TAX_RATE / 100);
+        var total = taxable + tax;
+        var paid = (paymentMethod === 'cash') ? (parseFloat(document.getElementById('amountPaid').value) || 0) : total;
 
-        const items = cart.map(i => ({
-            product_id: i.id,
-            product_name: i.name,
-            quantity: i.qty,
-            unit_price: i.price,
-            discount: 0,
-            subtotal: i.price * i.qty
-        }));
+        if (paymentMethod === 'cash' && paid < total) {
+            alert('Amount tendered is less than the total!');
+            return;
+        }
 
-        const payload = {
-            customer_id: document.getElementById('customerSelect').value || null,
-            items,
-            subtotal,
-            tax_rate: TAX_RATE,
-            tax_amount: tax,
+        var items = [];
+        for (var i = 0; i < cart.length; i++) {
+            items.push({
+                product_id:   cart[i].id,
+                product_name: cart[i].name,
+                quantity:     cart[i].qty,
+                unit_price:   cart[i].price,
+                discount:     0,
+                subtotal:     cart[i].price * cart[i].qty
+            });
+        }
+
+        var payload = {
+            customer_id:     document.getElementById('customerSelect').value || null,
+            items:           items,
+            subtotal:        subtotal,
+            tax_rate:        TAX_RATE,
+            tax_amount:      tax,
             discount_amount: discount,
-            total_amount: total,
-            amount_paid: paid,
-            change_amount: Math.max(0, paid - total),
-            payment_method: paymentMethod,
+            total_amount:    total,
+            amount_paid:     paid,
+            change_amount:   Math.max(0, paid - total),
+            payment_method:  paymentMethod
         };
 
-        document.getElementById('checkoutBtn').disabled = true;
-        document.getElementById('checkoutBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        var btn = document.getElementById('checkoutBtn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
 
-        try {
-            const res = await fetch(BASE_URL + '/index.php?url=sales/process', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
-                body: JSON.stringify(payload)
+        fetch(BASE_URL + '/index.php?url=sales/process', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            body:    JSON.stringify(payload)
+        })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    currentSale = data.sale;
+                    showReceipt(data.sale, paid, Math.max(0, paid - total));
+                } else {
+                    alert('Error: ' + (data.message || 'Failed to process sale'));
+                }
+            })
+            .catch(function() {
+                alert('Network error. Please try again.');
+            })
+            .finally(function() {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-circle"></i> Process Payment';
             });
-            const data = await res.json();
-
-            if (data.success) {
-                currentSale = data.sale;
-                showReceipt(data.sale, paid, Math.max(0, paid - total));
-            } else {
-                alert('Error: ' + (data.message || 'Failed to process sale'));
-            }
-        } catch (e) {
-            alert('Network error. Please try again.');
-        } finally {
-            document.getElementById('checkoutBtn').disabled = false;
-            document.getElementById('checkoutBtn').innerHTML = '<i class="fas fa-check-circle"></i> Process Payment';
-        }
     }
 
     function showReceipt(sale, paid, change) {
-        let itemsHtml = sale.items.map(i => `
-        <div class="r-item">
-            <span>${i.product_name} x${i.quantity}</span>
-            <span>₱${parseFloat(i.subtotal).toFixed(2)}</span>
-        </div>`).join('');
+        var itemsHtml = '';
+        for (var i = 0; i < sale.items.length; i++) {
+            var it = sale.items[i];
+            itemsHtml += '<div class="r-item"><span>' + it.product_name + ' x' + it.quantity + '</span><span>&#8369;' + parseFloat(it.subtotal).toFixed(2) + '</span></div>';
+        }
 
-        document.getElementById('receiptContent').innerHTML = `
-        <div class="receipt-header">
-            <strong>${'<?= APP_NAME ?>'}</strong>
-            <div>${sale.invoice_number}</div>
-            <div style="font-size:12px;color:#888">${new Date().toLocaleString()}</div>
-        </div>
-        <div class="receipt-items">${itemsHtml}</div>
-        <div class="receipt-totals">
-            <div class="r-row"><span>Subtotal</span><span>₱${parseFloat(sale.subtotal).toFixed(2)}</span></div>
-            <div class="r-row"><span>Discount</span><span>-₱${parseFloat(sale.discount_amount).toFixed(2)}</span></div>
-            <div class="r-row"><span>Tax (${TAX_RATE}%)</span><span>₱${parseFloat(sale.tax_amount).toFixed(2)}</span></div>
-            <div class="r-row r-total"><span>TOTAL</span><span>₱${parseFloat(sale.total_amount).toFixed(2)}</span></div>
-            <div class="r-row"><span>Paid (${sale.payment_method})</span><span>₱${paid.toFixed(2)}</span></div>
-            <div class="r-row r-change"><span>Change</span><span>₱${change.toFixed(2)}</span></div>
-        </div>
-        <div class="receipt-footer">Thank you for your purchase!</div>`;
+        document.getElementById('receiptContent').innerHTML =
+            '<div class="receipt-header">' +
+            '<strong><?= APP_NAME ?></strong>' +
+            '<div>' + sale.invoice_number + '</div>' +
+            '<div style="font-size:12px;color:#888">' + new Date().toLocaleString() + '</div>' +
+            '</div>' +
+            '<div class="receipt-items">' + itemsHtml + '</div>' +
+            '<div class="receipt-totals">' +
+            '<div class="r-row"><span>Subtotal</span><span>&#8369;' + parseFloat(sale.subtotal).toFixed(2) + '</span></div>' +
+            '<div class="r-row"><span>Discount</span><span>-&#8369;' + parseFloat(sale.discount_amount).toFixed(2) + '</span></div>' +
+            '<div class="r-row"><span>Tax (' + TAX_RATE + '%)</span><span>&#8369;' + parseFloat(sale.tax_amount).toFixed(2) + '</span></div>' +
+            '<div class="r-row r-total"><span>TOTAL</span><span>&#8369;' + parseFloat(sale.total_amount).toFixed(2) + '</span></div>' +
+            '<div class="r-row"><span>Paid (' + sale.payment_method + ')</span><span>&#8369;' + paid.toFixed(2) + '</span></div>' +
+            '<div class="r-row r-change"><span>Change</span><span>&#8369;' + change.toFixed(2) + '</span></div>' +
+            '</div>' +
+            '<div class="receipt-footer">Thank you for your purchase!</div>';
 
         document.getElementById('receiptModal').style.display = 'flex';
     }
 
     function printReceipt() {
-        const content = document.getElementById('receiptContent').innerHTML;
-        const win = window.open('', '_blank', 'width=380,height=600');
-        win.document.write(`<!DOCTYPE html><html><head><title>Receipt</title>
-    <style>body{font-family:monospace;font-size:13px;max-width:380px;margin:0 auto;padding:16px}
-    .receipt-header{text-align:center;margin-bottom:12px;border-bottom:1px dashed #ccc;padding-bottom:8px}
-    .r-item,.r-row{display:flex;justify-content:space-between;padding:2px 0}
-    .receipt-items{border-bottom:1px dashed #ccc;padding-bottom:8px;margin-bottom:8px}
-    .r-total{font-weight:bold;border-top:1px dashed #ccc;padding-top:4px;margin-top:4px}
-    .receipt-footer{text-align:center;margin-top:12px;border-top:1px dashed #ccc;padding-top:8px}
-    </style></head><body>${content}</body></html>`);
+        var content = document.getElementById('receiptContent').innerHTML;
+        var win = window.open('', '_blank', 'width=380,height=600');
+        win.document.write('<!DOCTYPE html><html><head><title>Receipt</title>' +
+            '<style>body{font-family:monospace;font-size:13px;max-width:380px;margin:0 auto;padding:16px}' +
+            '.receipt-header{text-align:center;margin-bottom:12px;border-bottom:1px dashed #ccc;padding-bottom:8px}' +
+            '.r-item,.r-row{display:flex;justify-content:space-between;padding:2px 0}' +
+            '.receipt-items{border-bottom:1px dashed #ccc;padding-bottom:8px;margin-bottom:8px}' +
+            '.r-total{font-weight:bold;border-top:1px dashed #ccc;padding-top:4px;margin-top:4px}' +
+            '.receipt-footer{text-align:center;margin-top:12px;border-top:1px dashed #ccc;padding-top:8px}' +
+            '</style></head><body>' + content + '</body></html>');
         win.document.close();
         win.print();
     }
 
     function newTransaction() {
         cart = [];
-        currentSale = null;
         document.getElementById('discountAmount').value = 0;
         document.getElementById('amountPaid').value = '';
+        document.getElementById('changeAmount').value = '';
         document.getElementById('customerSelect').value = '';
-        document.getElementById('receiptModal').style.display = 'none';
-        paymentMethod = 'cash';
-        document.querySelectorAll('.pay-method').forEach(b => b.classList.remove('active'));
-        document.querySelector('.pay-method[data-method="cash"]').classList.add('active');
-        document.getElementById('cashInputGroup').style.display = 'block';
         renderCart();
+        document.getElementById('receiptModal').style.display = 'none';
     }
 
-    // Product search & filter
+    // Product search
     document.getElementById('productSearch').addEventListener('input', function() {
-        const q = this.value.toLowerCase();
-        document.querySelectorAll('.product-card').forEach(card => {
-            const match = card.dataset.name.toLowerCase().includes(q) || card.dataset.sku.toLowerCase().includes(q);
-            card.style.display = match ? '' : 'none';
-        });
+        var q = this.value.toLowerCase();
+        var cards = document.querySelectorAll('.product-card');
+        for (var i = 0; i < cards.length; i++) {
+            var match = cards[i].dataset.name.toLowerCase().indexOf(q) !== -1 ||
+                cards[i].dataset.sku.toLowerCase().indexOf(q) !== -1;
+            cards[i].style.display = match ? '' : 'none';
+        }
     });
 
+    // Category filter
     document.getElementById('categoryTabs').addEventListener('click', function(e) {
         if (!e.target.classList.contains('cat-tab')) return;
-        document.querySelectorAll('.cat-tab').forEach(t => t.classList.remove('active'));
+        var tabs = document.querySelectorAll('.cat-tab');
+        for (var i = 0; i < tabs.length; i++) tabs[i].classList.remove('active');
         e.target.classList.add('active');
-        const cat = e.target.dataset.cat;
-        document.querySelectorAll('.product-card').forEach(card => {
-            card.style.display = (cat === 'all' || card.dataset.cat === cat) ? '' : 'none';
-        });
+        var cat = e.target.dataset.cat;
+        var cards = document.querySelectorAll('.product-card');
+        for (var i = 0; i < cards.length; i++) {
+            cards[i].style.display = (cat === 'all' || cards[i].dataset.cat === cat) ? '' : 'none';
+        }
     });
 
     renderCart();
